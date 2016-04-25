@@ -3,6 +3,7 @@ $show_path = 0;   # Show local path.
 $show_dotdirs = 0;   # Show '.' and '..'.
 $path = substr($_SERVER['SCRIPT_FILENAME'], 0,
     strrpos($_SERVER['SCRIPT_FILENAME'], '/') + 1);
+$path = $path."/downloads";
 ?>
   <head>
     <title>Linux Deployment CaC server</title>
@@ -83,7 +84,7 @@ Please use with compatible boot image (downloads below)<br/><br/>
 <?php
 $dirs = array();
 $files = array();
-$dir = dir($path."/downloads");
+$dir = dir($path);
 while ($entry = $dir->read()) {
     if (($entry != '.') and (substr($entry, -4) != '.php')) {
         if (is_dir($entry)) {
@@ -98,11 +99,11 @@ while ($entry = $dir->read()) {
 $dir->close();
 sort($dirs);
 foreach ($dirs as $dir) {
-    printf('<strong>&lt;</strong> <a href="%s">%s</a> <strong>&gt;</strong><br />' . "\n", $dir, $dir);
+    printf('<strong>&lt;</strong> <a href="/downloads/%s">%s</a> <strong>&gt;</strong><br />' . "\n", $dir, $dir);
 }
 sort($files);
 foreach ($files as $file) {
-    printf('<a href="%s">%s<br />' . "\n", $file, $file);
+    printf('<a href="/downloads/%s">%s<br />' . "\n", $file, $file);
 }
 ?>
         </td>
