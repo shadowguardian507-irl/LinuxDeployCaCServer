@@ -1,0 +1,97 @@
+echo en_GB.UTF-8 UTF-8 >> /etc/locale.gen
+echo en_US.UTF-8 UTF-8 >> /etc/locale.gen
+locale-gen
+
+echo LANG=en_US.UTF-8 >> /etc/locale.conf
+
+ln -s /usr/share/zoneinfo/Europe/London /etc/localtime
+hwclock --systohc --utc
+
+pacman --noconfirm -S intel-ucode
+
+pacman --noconfirm -S grub os-prober
+
+grub-install --target=i386-pc /dev/sda
+
+grub-mkconfig -o /boot/grub/grub.cfg
+
+
+echo Arch-Linux-Server > /etc/hostname
+
+echo Description=\'static ethernet connection\' >> /etc/netctl/ens32
+echo Interface=ens32 >> /etc/netctl/ens32
+echo Connection=ethernet >> /etc/netctl/ens32
+echo IP=static >> /etc/netctl/ens32
+echo Address=\(\'10.20.1.211/24\'\) >> /etc/netctl/ens32
+echo Gateway=\'10.20.1.1\' >> /etc/netctl/ens32
+echo DNS=\(\'10.20.1.212\' \'10.20.1.211\'\) >> /etc/netctl/ens32
+
+netctl enable ens32
+
+pacman --noconfirm -S openssh
+echo PermitRootLogin yes >> /etc/ssh/sshd_config
+systemctl enable sshd
+
+pacman --noconfirm -S  open-vm-tools
+cat /proc/version > /etc/arch-release
+systemctl enable vmtoolsd
+
+
+echo root:Turnip | chpasswd
+
+
+pacman --noconfirm -S git
+pacman --noconfirm -S nginx php php-fpm
+systemctl enable nginx
+sudo systemctl enable php-fpm
+
+rm /etc/nginx/nginx.conf
+
+echo cgi.fix_pathinfo = 0; >> /etc/php/php.ini
+
+cat > /etc/nginx/nginx.conf <<'EOF'
+
+#user html;
+worker_processes  1;
+events {
+    worker_connections  1024;
+}
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    #gzip  on;
+    server {
+        listen       80;
+        server_name  localhost;
+
+        root /usr/share/nginx/html;
+        index index.php index.html index.htm;
+        location / {
+                try_files $uri $uri/ =404;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+
+        location ~ \.php$ {
+                try_files $uri =404;
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                fastcgi_pass unix:/run/php-fpm/php-fpm.sock;
+                fastcgi_index index.php;
+                include fastcgi_params;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        }
+        # deny access to .htaccess files, if Apache's document root
+        # concurs with nginx's one
+        #
+        #location ~ /\.ht {
+        #    deny  all;
+        #}
+    }
+}
+
+EOF
