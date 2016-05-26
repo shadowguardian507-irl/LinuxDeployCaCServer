@@ -1,0 +1,78 @@
+echo AtestSystem > /etc/hostname
+
+pacman --noconfirm -S openssh
+
+sed -i '/PermitRootLogin/d' /etc/ssh/sshd_config
+
+echo PermitRootLogin yes >> /etc/ssh/sshd_config
+systemctl enable sshd
+
+pacman --noconfirm -S  open-vm-tools
+cat /proc/version > /etc/arch-release
+systemctl enable vmtoolsd
+
+
+echo root:Turnip | chpasswd
+
+
+pacman --noconfirm -S git
+pacman --noconfirm -S nginx php5 php5-fpm
+systemctl enable nginx
+systemctl enable php5-fpm
+
+rm /etc/nginx/nginx.conf
+
+echo cgi.fix_pathinfo = 0; >> /etc/php5/fpm/php.ini
+
+cat > /etc/nginx/nginx.conf <<'EOF'
+
+#user html;
+worker_processes  1;
+events {
+    worker_connections  1024;
+}
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    #gzip  on;
+    server {
+        listen       80;
+        server_name  localhost;
+
+        root /usr/share/nginx/html;
+        index index.php index.html index.htm;
+        location / {
+                try_files $uri $uri/ =404;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+
+        location ~ \.php$ {
+                try_files $uri =404;
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                fastcgi_pass unix:/run/php-fpm/php-fpm.sock;
+                fastcgi_index index.php;
+                include fastcgi_params;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        }
+        # deny access to .htaccess files, if Apache's document root
+        # concurs with nginx's one
+        #
+        #location ~ /\.ht {
+        #    deny  all;
+        #}
+    }
+}
+
+EOF
+
+
+rm /root/.bash_profile
+
+
+reboot
